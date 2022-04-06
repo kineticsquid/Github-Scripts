@@ -1,7 +1,7 @@
 import traceback
 import os
 import argparse
-import handle_GHE_calls
+import handle_GH_paging
 import requests
 
 def get_args():
@@ -31,7 +31,7 @@ def main():
 
         gh_api_endpoint = 'https://%s/api/v3' % server
 
-        repos = handle_GHE_calls.makeCall('%s/orgs/%s/repos' % (gh_api_endpoint, org), headers=ghe_headers,
+        repos = handle_GH_paging.makeCall('%s/orgs/%s/repos' % (gh_api_endpoint, org), headers=ghe_headers,
                                           parameters=None)
         print('Forks in %s and forks of repos in %s:' % (org, org))
         for repo in repos:

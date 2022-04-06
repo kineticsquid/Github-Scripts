@@ -9,7 +9,7 @@ Zenhub API: https://github.com/ZenHubIO/API
 
 import requests
 import traceback
-import handle_GHE_calls as ghe
+import handle_GH_paging as gh
 import handle_zenhub_calls as zh
 import os
 import json
@@ -60,7 +60,7 @@ Method to retrieve all the labels for this repo that start with "Squad:".
 
 def get_squad_labels(labels_url):
 
-    all_labels = ghe.makeCall(
+    all_labels = gh.makeCall(
         labels_url, ghe_headers, {})
     squad_labels = []
     for label in all_labels:

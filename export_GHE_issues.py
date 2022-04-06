@@ -17,7 +17,7 @@ Otherwise, parameters are as documented for issues through the GitHub API:
 import argparse
 import csv
 import traceback
-import handle_GHE_calls
+import handle_GH_paging
 import os
 
 page_size = 50
@@ -93,7 +93,7 @@ def export_issues(repo_url, milestone, state, assignee, creator, mentioned, labe
     parameters = dict(milestone=milestone, state=state, assignee=assignee, creator=creator, mentioned=mentioned,
                       labels=labels, sort=sort, direction=direction, since=since, per_page='%s' % pagesize)
 
-    issues = handle_GHE_calls.makeCall(repo_url, headers, parameters)
+    issues = handle_GH_paging.makeCall(repo_url, headers, parameters)
 
     return issues
 

@@ -10,7 +10,7 @@ For syntax:
 """
 
 import os
-import handle_GHE_calls
+import handle_GH_paging
 import traceback
 import my_logger
 
@@ -52,7 +52,7 @@ def main():
         logger = my_logger.get_logger()
 
         # get all the repos for this organization
-        repos = handle_GHE_calls.makeCall('%s/repos' % ORG_GITHUB_URL, HEADERS, PARAMETERS, logger=logger,
+        repos = handle_GH_paging.makeCall('%s/repos' % ORG_GITHUB_URL, HEADERS, PARAMETERS, logger=logger,
                                           print_status=True)
         # create new request parameters to get all of the issues (not just the open ones)
         issues_parameters = PARAMETERS.copy()
@@ -89,12 +89,12 @@ def main():
 
                 # get all of the pull requests for this repo and loop through each PR. If there are commits, write info
                 # about the commit to the output file
-                pulls = handle_GHE_calls.makeCall('%s/pulls' % repo_url, HEADERS, issues_parameters, logger=logger,
+                pulls = handle_GH_paging.makeCall('%s/pulls' % repo_url, HEADERS, issues_parameters, logger=logger,
                                                   print_status=True)
                 for pull in pulls:
                     commits_url = pull.get('commits_url', None)
                     if commits_url is not None:
-                        commits = handle_GHE_calls.makeCall(commits_url, HEADERS, PARAMETERS)
+                        commits = handle_GH_paging.makeCall(commits_url, HEADERS, PARAMETERS)
                         for commit in commits:
                             end_of_date = pull['created_at'].find('T')
                             date = pull['created_at'][0:end_of_date]

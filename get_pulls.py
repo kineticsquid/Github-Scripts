@@ -10,7 +10,7 @@ For syntax:
 """
 
 import os
-import handle_GHE_calls
+import handle_GH_paging
 import traceback
 import json
 
@@ -33,7 +33,7 @@ Main method
 def main():
     try:
         # get all the repos for this organization
-        repos = handle_GHE_calls.makeCall('%s/repos' % ORG_GITHUB_URL, HEADERS, PARAMETERS,
+        repos = handle_GH_paging.makeCall('%s/repos' % ORG_GITHUB_URL, HEADERS, PARAMETERS,
                                           print_status=True)
         # create new request parameters to get all of the issues (not just the open ones)
         issues_parameters = PARAMETERS.copy()
@@ -43,13 +43,13 @@ def main():
 
         for repo in repos:
             repo_url = repo['url']
-            pulls = handle_GHE_calls.makeCall('%s/pulls' % repo_url, HEADERS, issues_parameters,
+            pulls = handle_GH_paging.makeCall('%s/pulls' % repo_url, HEADERS, issues_parameters,
                                               print_status=True)
             print('processing %s - %s pulls' % (repo_url, len(pulls)))
             for pull in pulls:
                 commits_url = pull.get('commits_url', None)
                 if commits_url is not None:
-                    commits = handle_GHE_calls.makeCall(commits_url, HEADERS, PARAMETERS)
+                    commits = handle_GH_paging.makeCall(commits_url, HEADERS, PARAMETERS)
                     for commit in commits:
                         author = commit.get('author', None)
                         if author is not None:
