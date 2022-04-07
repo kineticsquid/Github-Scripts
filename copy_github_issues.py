@@ -18,6 +18,7 @@ SOURCE_ORG - GitHub org that is the source of the issues to be copied
 SOURCE_REPO - Github repo that is the source of the issues to be copied
 TARGET_ORG - GitHub org to where the issues will be copied
 TARGET_REPO - Github repo to where the issues will be copied
+ISSUE_STATE - State of issues in source repo to be copied, per GitHub /issues API; open, closed, or all.
 
 This uses a verify=False on the requests library call, which generates warning messages. To suppress the warning
 messages set environment variable PYTHONWARNINGS to 'ignore'.
@@ -45,22 +46,41 @@ ISSUE_REGEX = r'(\s#|\S+/issues/)(\d+)'
 # copy needs to be done in one shot and complete. Hence the conservative value.
 timeout = 120
 
-# Domain names of the github server
-gh_server = 'github.com'
-
 # This is the org and repo from where issues will be copied.
 
 source_org = os.getenv('SOURCE_ORG')
+if source_org is None:
+    raise Exception('SOURCE_ORG environment variable not defined.')
 source_repo = os.getenv('SOURCE_REPO')
+if source_repo is None:
+    raise Exception('SOURCE_REPO environment variable not defined.')
 
 # Info on where the issues will be copied to. 
 #
 target_org = os.getenv('TARGET_ORG')
+if target_org is None:
+    raise Exception('TARGET_ORG environment variable not defined.')
 target_repo = os.getenv('TARGET_REPO')
+if target_repo is None:
+    raise Exception('TARGET_REPO environment variable not defined.')
+
+# State of issues to copy
+#
+issue_state = os.getenv('ISSUE_STATE')
+if issue_state is None:
+    issue_state = 'open'
+
+# Domain name of the github server
+#
+gh_server = os.getenv('GH_SERVER')
+if gh_server == None:
+    gh_server = 'github.com'
 
 
 # Tokens for API access. See the Github API doc for how to create access tokens.
 gh_token = os.getenv('GH_ACCESS_TOKEN')
+if gh_token is None:
+    raise Exception('GH_ACCESS_TOKEN environment variable not defined.')
 gh_headers = {"Authorization": "token %s" % gh_token, "Accept": "application/vnd.github.v3+json"}
 
 gh_api_endpoint = 'https://%s/api/v3' % gh_server
@@ -261,8 +281,8 @@ properly representing the reference in the issue text.
 
 def patch_target_issues(issue_map):
     print('\nNow patching up issue in target repo.')
-    target_gh_issues_url = 'https://github.ibm.com/%s/%s/issues' % (target_org, target_repo)
-    source_gh_issues_url = 'https://github.ibm.com/%s/%s/issues' % (source_org, source_repo)
+    target_gh_issues_url = 'https://%s/%s/%s/issues' % (gh_server, target_org, target_repo)
+    source_gh_issues_url = 'https://%s/%s/%s/issues' % (gh_server, source_org, source_repo)
     for key in issue_map.keys():
         response = requests.get('%s/issues/%s' % (target_repo_url, issue_map[key]), headers=gh_headers, verify=False,
                                 timeout=timeout)
@@ -343,7 +363,7 @@ properly representing the reference in the issue text.
 
 def patch_source_issues(issue_map):
     print('\nNow patching up issue references in source repo.')
-    target_gh_issues_url = 'https://github.ibm.com/%s/%s/issues' % (target_org, target_repo)
+    target_gh_issues_url = 'https://%s/%s/%s/issues' % (gh_server, target_org, target_repo)
     parameters = {'state': 'all', 'direction': 'asc', 'per_page': 50}
     issues = gh.makeCall('%s/issues' % source_repo_url, gh_headers, parameters,
                           print_status=True)
@@ -487,7 +507,7 @@ def main():
         issues = []
         #
         # read the open issues from the source repo
-        issues = read_issues('open')
+        issues = read_issues(issue_state)
 
         # add to the target repo the labels and milestones from the source repo
         setup_target_repo()
