@@ -59,14 +59,32 @@ def main():
             output_file = open(output_filename, 'w')
         else:
             output_file = None
-
+        output_results("Repo, Date, Author, Author Login, Author Email, Committer, Committer Login, Committer Email", output_file)
         for repo in repos.split(','):
             repo = repo.strip()
             print("Processing %s" % repo)
             # get all the commits for this repo
             commits = gh.makeCall('%s/repos/%s/commits' % (GITHUB_API_URL, repo), gh_headers, parms,
                                             print_status=True)
-            output_results("%s, %s" % (repo, len(commits)), output_file)
+            for commit in commits:
+                author = commit.get('author')
+                if author is not None:
+                    author_login = author['login']
+                else:
+                    author_login = None
+                committer = commit.get('committer')
+                if committer is not None:
+                    committer_login = committer['login']
+                else:
+                    committer_login = None
+                output_results("%s, %s, %s, %s, %s, %s, %s, %s" % (repo,
+                                                    commit['commit']['author']['date'],
+                                                    commit['commit']['author']['name'],
+                                                    author_login,
+                                                    commit['commit']['author']['email'],
+                                                    commit['commit']['committer']['name'],
+                                                    committer_login,
+                                                    commit['commit']['committer']['email']), output_file)
 
         if output_file is not None:
             output_file.close()
