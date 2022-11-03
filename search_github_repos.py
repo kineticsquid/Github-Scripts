@@ -20,7 +20,7 @@ one doesn't exist. There doesn't seem to be a reliable way to determine if a rep
 To use:
 
     python3 search_GHE_repos.py
-      --server {domain name of server - default is github.ibm.com}
+      --server {domain name of server - default is github.ibm}
       --org {org to scan - default is watson-engagement-advisor}
       --repo {repo - scan this only and not all repos in the org}
       --regex {regex to search for}
@@ -31,7 +31,7 @@ To use:
 import argparse
 import traceback
 import os
-from Github_Scripts import handle_GHE_calls
+import handle_GH_paging
 import base64
 import re
 import shutil
@@ -57,9 +57,9 @@ def get_args():
         description='Scans all files in all repos in an org for a regex.')
     # Add arguments
     parser.add_argument(
-        '-s', '--server', type=str, help='GitHub Enterprise server name. ', required=True)
+        '-s', '--server', type=str, help='API entry point for Github server, default is api.github.com.', default='api.github.com')
     parser.add_argument(
-        '-o', '--org', type=str, help='GitHub Enterprise organization name. ', required=True)
+        '-o', '--org', type=str, help='GitHub organization name.', required=True)
     parser.add_argument(
         '-r', '--repo', type=str, help='Repo in the org to scan. Only this repo will be scanned.')
     parser.add_argument(
@@ -67,7 +67,7 @@ def get_args():
     parser.add_argument(
         '--start', type=str, help='Name of repo to start with.')
     parser.add_argument(
-        '-d', '--directory', type=str, help='Output directory for HTML output files.')
+        '-d', '--directory', type=str, help='Output directory for HTML output files, default is \'output\'.', default='output')
     args = parser.parse_args()
     return args.server, args.org, args.repo, args.regex, args.start, args.directory
 
@@ -80,7 +80,7 @@ Process the contents of a repo recursively to deal with folders
 def process_repo_element(repo, element, headers, regex):
     html_results = ''
     try:
-        repo_element_contents = handle_GHE_calls.makeCall(element['url'], headers, None,
+        repo_element_contents = handle_GH_paging.makeCall(element['url'], headers, None,
                                                           maxretries=MAX_RETRIES, TIMEOUT=TIMEOUT)
         # if the type of the returned results is not a dict (it's an array)
         # it means this is a folder, so recursively process entries
@@ -163,15 +163,15 @@ This routine processes the branches in a repo other than master
 
 def process_branches(repo, headers, regex):
     html_results = ''
-    branches = handle_GHE_calls.makeCall(repo['url'] + '/branches', headers, None,
+    branches = handle_GH_paging.makeCall(repo['url'] + '/branches', headers, None,
                                          maxretries=MAX_RETRIES, TIMEOUT=TIMEOUT)
     for branch in branches:
         if branch['name'] != 'master':
-            branch_contents = handle_GHE_calls.makeCall(branch['commit']['url'],
+            branch_contents = handle_GH_paging.makeCall(branch['commit']['url'],
                                                         headers, None, maxretries=MAX_RETRIES, TIMEOUT=TIMEOUT)
             for file in branch_contents['files']:
                 if file['status'] != 'removed':
-                    file_contents = handle_GHE_calls.makeCall(file['contents_url'],
+                    file_contents = handle_GH_paging.makeCall(file['contents_url'],
                                                               headers, None, maxretries=MAX_RETRIES, TIMEOUT=TIMEOUT)
                     try:
                         # need to decode the content first to get text
@@ -230,19 +230,19 @@ def main():
     try:
         server, org, repo, r, start_repo, output_directory = get_args()
         regex = re.compile(r, re.IGNORECASE)
-        ghe_token = os.getenv('GHE_ACCESS_TOKEN')
-        if ghe_token is None:
-            raise Exception('GHE_ACCESS_TOKEN environment variable not defined.')
+        gh_token = os.getenv('GH_ACCESS_TOKEN')
+        if gh_token is None:
+            raise Exception('GH_ACCESS_TOKEN environment variable not defined.')
         # Get all the repos for the org
-        headers = dict(Authorization='token %s' % ghe_token)
+        headers = dict(Authorization='token %s' % gh_token)
         parameters = dict(per_page='%s' % PAGE_SIZE)
         if repo is None:
-            repos_url = 'https://%s/api/v3/orgs/%s/repos' % (server, org)
-            repos = handle_GHE_calls.makeCall(repos_url, headers, parameters, print_status=True,
+            repos_url = 'https://%s/orgs/%s/repos' % (server, org)
+            repos = handle_GH_paging.makeCall(repos_url, headers, parameters, print_status=True,
                                               maxretries=MAX_RETRIES, TIMEOUT=TIMEOUT)
         else:
-            repo_url = 'https://%s/api/v3/repos/%s/%s' % (server, org, repo)
-            repo = handle_GHE_calls.makeCall(repo_url, headers, parameters, print_status=True,
+            repo_url = 'https://%s/repos/%s/%s' % (server, org, repo)
+            repo = handle_GH_paging.makeCall(repo_url, headers, parameters, print_status=True,
                                              maxretries=MAX_RETRIES, TIMEOUT=TIMEOUT)
             repos = [repo]
 
@@ -265,11 +265,11 @@ def main():
             if start_scanning is True:
                 print('Processing %s of %s: %s' % (count, len(repos), repo['full_name']))
                 try:
-                    repo_contents = handle_GHE_calls.makeCall(repo['url'] + '/contents', headers, None,
+                    repo_contents = handle_GH_paging.makeCall(repo['url'] + '/contents', headers, None,
                                                               maxretries=MAX_RETRIES, TIMEOUT=TIMEOUT)
                     html_results = ''
                     for element in repo_contents:
-                        html_results += process_repo_element(repo, element, headers, regex)
+                        html_results += html_results + process_repo_element(repo, element, headers, regex)
 
                     # Now process branches other than master
                     # html_results += process_branches(repo, headers, regex)
