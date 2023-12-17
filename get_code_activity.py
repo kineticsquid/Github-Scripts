@@ -30,7 +30,7 @@ def get_args():
     parser.add_argument(
         '-r', '--repo', type=str, help='Org/repo to list the pulls for')
     parser.add_argument(
-        '-f', '--file', type=str, help='File with list of org/repos, one per line, to list the pulls and commits for')
+        '-f', '--file', type=str, help='CSV file with list of project, org/repo, one per line, to list the pulls and commits for')
     parser.add_argument(
         '-o', '--output', type=str, help='Filename for output. Default is \'output.csv\'.', default='output.csv')
 
@@ -58,8 +58,18 @@ def convert_date(iso_date_string):
         return None
 
 # Process a repo
-def process_repo(repo, output_file):
-    print("Processing \'%s\'" % repo)
+def process_repo(repo_str, output_file):
+
+    print("Processing \'%s\'" % repo_str.strip() )
+
+    comma = repo_str.find(',')
+    if comma < 0:
+        project = None
+        repo = repo_str.strip()
+    else:
+        project = repo_str[0:comma].strip()
+        repo = repo_str[comma+1:len(repo_str)].strip()
+
 
     # get all the commits for this repo
     commits = gh.makeCall('%s/repos/%s/commits' % (GITHUB_API_URL, repo), gh_headers, parms,
@@ -73,7 +83,7 @@ def process_repo(repo, output_file):
                 iso_date = commit['commit']['committer']['date']
                 date = convert_date(iso_date)
                 if date is not None and '[bot]' not in author_detail['login']:
-                    output_file.write('%s,commit,%s,%s,%s\n' % (repo, date, author_detail['login'], author_detail['name']))
+                    output_file.write('%s, %s,commit,%s,%s,%s\n' % (project, repo, date, author_detail['login'], author_detail['name']))
             except Exception as e:
                 print(print('Error: ' + str(e)))
         count += 1
@@ -92,7 +102,7 @@ def process_repo(repo, output_file):
                 iso_date = pull['closed_at']
                 date = convert_date(iso_date)
                 if date is not None and '[bot]' not in user_detail['login']:
-                    output_file.write('%s,pull,%s,%s,%s\n' % (repo, date, user_detail['login'], user_detail['name']))
+                    output_file.write('%s, %s,pull,%s,%s,%s\n' % (project, repo, date, user_detail['login'], user_detail['name']))
             except Exception as e:
                 print(print('Error: ' + str(e)))
         count += 1
@@ -104,14 +114,14 @@ def main():
     try:
         input_repo, input_filename, output_filename = get_args()
         output_file = open(output_filename, 'w')
-        output_file.write('repo, type, date, login, name\n')
+        output_file.write('project, repo, type, date, login, name\n')
 
         if input_repo is not None:
-            process_repo(input_repo.strip(), output_file)
+            process_repo(input_repo, output_file)
         elif input_filename is not None: 
             input_file = open(input_filename, 'r')
             for repo in input_file:
-                process_repo(repo.strip(), output_file)
+                process_repo(repo, output_file)
         else:
             raise Exception('You must specify either a repo (-r) or an input file (-f).')
         output_file.close()
